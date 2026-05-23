@@ -4,4 +4,4 @@
 **/.git/
 azure/vm-info.env
 *.md
-!ChallengeNET-main/ChallengeNET-main/README.md
+!ChallengeNET-main/README.md

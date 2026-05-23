@@ -10,7 +10,7 @@ Repositorio: https://github.com/GuuiSOares/clyvocare-devops
 
 A **ClyvoCare API** gerencia tutores (`Usuarios`), pets (`Pets`) e registros de saude (`LogsSaude`) coletados por sensores/IoT. A aplicacao utiliza **Entity Framework Core** com **Oracle Database** e pode ser executada localmente ou em uma **VM Linux (AlmaLinux) na Azure** por meio de **Docker Compose** e scripts **Azure CLI**.
 
-Codigo da API: [`ChallengeNET-main/ChallengeNET-main/`](ChallengeNET-main/ChallengeNET-main/)
+Codigo da API: [`ChallengeNET-main/`](ChallengeNET-main/)
 
 ---
 
@@ -214,7 +214,7 @@ docker compose ps
 
 ```
 .
-├── ChallengeNET-main/ChallengeNET-main/   # Codigo da API .NET
+├── ChallengeNET-main/                     # Codigo da API .NET
 ├── azure/                                 # Scripts Azure CLI
 ├── Dockerfile
 ├── docker-compose.yml
