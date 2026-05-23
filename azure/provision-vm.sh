@@ -2,64 +2,67 @@
 set -euo pipefail
 
 RESOURCE_GROUP="${RESOURCE_GROUP:-rg-clyvo-cc}"
-LOCATION="${LOCATION:-eastus}"
+LOCATION="${LOCATION:-canadacentral}"
 VM_NAME="${VM_NAME:-vm-clyvo-app}"
-IMAGE="${IMAGE:-Ubuntu2404}"
-SIZE="${SIZE:-Standard_B2s}"
+IMAGE="${IMAGE:-almalinux:almalinux-x86_64:10-gen2:10.1.202605180}"
+SIZE="${SIZE:-Standard_B2ls_v2}"
 ADMIN_USERNAME="${ADMIN_USERNAME:-admlnx}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-Fiap@2tdsvms}"
-TAG_OWNER="${TAG_OWNER:-Clyvo}"
-TAG_PURPOSE="${TAG_PURPOSE:-Challenge}"
 OUTPUT_FILE="${OUTPUT_FILE:-azure/vm-info.env}"
 
+AZ="${AZ:-az}"
+
 echo "Verificando Azure CLI..."
-az account show >/dev/null
+$AZ account show >/dev/null
 
 echo ""
-echo "Criando Resource Group..."
-az group create --name "$RESOURCE_GROUP" --location "$LOCATION"
-az group show -n "$RESOURCE_GROUP" \
-  --query "{Name:name, Location:location, Tags:tags}" \
+echo "Resource Group: $RESOURCE_GROUP | Regiao: $LOCATION"
+$AZ group create --name "$RESOURCE_GROUP" --location "$LOCATION" --output none
+$AZ group show -n "$RESOURCE_GROUP" \
+  --query "{Name:name, Location:location}" \
   --output table
 
-echo ""
-echo "Criando VM Linux..."
-az vm create \
-  --resource-group "$RESOURCE_GROUP" \
-  --name "$VM_NAME" \
-  --image "$IMAGE" \
-  --size "$SIZE" \
-  --authentication-type password \
-  --admin-username "$ADMIN_USERNAME" \
-  --admin-password "$ADMIN_PASSWORD" \
-  --public-ip-sku Standard \
-  --tags "owner=$TAG_OWNER" "purpose=$TAG_PURPOSE"
+if $AZ vm show --resource-group "$RESOURCE_GROUP" --name "$VM_NAME" &>/dev/null; then
+  echo "VM $VM_NAME ja existe."
+  VM_SIZE_IN_USE=$($AZ vm show -g "$RESOURCE_GROUP" -n "$VM_NAME" --query "hardwareProfile.vmSize" -o tsv)
+else
+  echo "Criando VM ($SIZE)..."
+  $AZ vm create \
+    --resource-group "$RESOURCE_GROUP" \
+    --name "$VM_NAME" \
+    --image "$IMAGE" \
+    --size "$SIZE" \
+    --authentication-type password \
+    --admin-username "$ADMIN_USERNAME" \
+    --admin-password "$ADMIN_PASSWORD" \
+    --public-ip-sku Standard \
+    --only-show-errors \
+    --output none
+  VM_SIZE_IN_USE="$SIZE"
+fi
 
 echo ""
-echo "Liberando portas de rede (22, 8080, 1521)..."
-az vm open-port --resource-group "$RESOURCE_GROUP" --name "$VM_NAME" --port 22   --priority 1000
-az vm open-port --resource-group "$RESOURCE_GROUP" --name "$VM_NAME" --port 8080 --priority 1001
-az vm open-port --resource-group "$RESOURCE_GROUP" --name "$VM_NAME" --port 1521 --priority 1002
+echo "Liberando portas (22, 8080, 1521)..."
+$AZ vm open-port -g "$RESOURCE_GROUP" -n "$VM_NAME" --port 22   --priority 1000 2>/dev/null || true
+$AZ vm open-port -g "$RESOURCE_GROUP" -n "$VM_NAME" --port 8080 --priority 1001 2>/dev/null || true
+$AZ vm open-port -g "$RESOURCE_GROUP" -n "$VM_NAME" --port 1521 --priority 1002 2>/dev/null || true
 
 echo ""
-echo "Instalando Docker e utilitarios..."
-az vm run-command invoke \
+echo "Instalando Docker (aguarde)..."
+$AZ vm run-command invoke \
   --resource-group "$RESOURCE_GROUP" \
   --name "$VM_NAME" \
   --command-id RunShellScript \
   --scripts "
-    apt-get update -y && \
-    apt-get install -y git nano curl && \
-    curl -fsSL https://get.docker.com -o get-docker.sh && \
-    sh get-docker.sh && \
-    systemctl start docker && \
-    systemctl enable docker && \
+    dnf -y install dnf-plugins-core git curl && \
+    dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo && \
+    dnf -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin && \
+    systemctl enable --now docker && \
     usermod -aG docker ${ADMIN_USERNAME}
-  "
+  " \
+  --output none
 
-echo ""
-echo "Obtendo IP publico..."
-VM_PUBLIC_IP=$(az network public-ip show \
+VM_PUBLIC_IP=$($AZ network public-ip show \
   --resource-group "$RESOURCE_GROUP" \
   --name "${VM_NAME}PublicIP" \
   --query ipAddress \
@@ -70,18 +73,13 @@ cat > "$OUTPUT_FILE" <<EOF
 RESOURCE_GROUP=$RESOURCE_GROUP
 LOCATION=$LOCATION
 VM_NAME=$VM_NAME
+VM_SIZE=$VM_SIZE_IN_USE
 ADMIN_USERNAME=$ADMIN_USERNAME
 VM_PUBLIC_IP=$VM_PUBLIC_IP
-API_URL=http://${VM_PUBLIC_IP}:8080
-SWAGGER_URL=http://${VM_PUBLIC_IP}:8080/swagger
 EOF
 
 echo ""
-echo "Provisionamento concluido."
-echo "IP publico: $VM_PUBLIC_IP"
-echo "Swagger (apos deploy): http://${VM_PUBLIC_IP}:8080/swagger"
-echo "SSH: ssh ${ADMIN_USERNAME}@${VM_PUBLIC_IP}"
-echo "Configuracao salva em: $OUTPUT_FILE"
-echo ""
-echo "Proximo comando:"
-echo "  REPO_URL=https://github.com/USUARIO/REPO.git bash azure/deploy-app.sh"
+echo "Concluido."
+echo "Regiao: $LOCATION | VM: $VM_SIZE_IN_USE | IP: $VM_PUBLIC_IP"
+echo "Arquivo: $OUTPUT_FILE"
+echo "Proximo: REPO_URL=https://github.com/GuuiSOares/clyvocare-devops.git bash azure/deploy-app.sh"

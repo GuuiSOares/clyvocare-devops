@@ -3,10 +3,13 @@ services:
     image: gvenzl/oracle-xe:21-slim-faststart
     container_name: clyvocare-oracle
     restart: unless-stopped
+    shm_size: 1g
     environment:
       ORACLE_PASSWORD: ClyvoCare_Oracle_Pwd1
       APP_USER: clyvocare
       APP_USER_PASSWORD: ClyvoCare_App_Pwd1
+      ORACLE_INIT_MEMORY: 1024
+      ORACLE_DISABLE_ASYNCH_IO: "true"
     ports:
       - "1521:1521"
     volumes:
