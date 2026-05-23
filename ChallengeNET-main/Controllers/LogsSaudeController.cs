@@ -21,13 +21,9 @@ namespace ClyvoCare.API.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<LogSaude>>> GetLogSaude()
         {
-         
-            if (!_context.Usuarios.Any())
-            {
-                return new List<LogSaude>();
-            }
-
-            return await _context.LogsSaude.ToListAsync();
+            return await _context.LogsSaude
+                .OrderByDescending(l => l.DataHora)
+                .ToListAsync();
         }
 
         // GET: api/LogsSaude/pet/1
