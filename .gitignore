@@ -1,0 +1,8 @@
+**/bin/
+**/obj/
+**/.vs/
+.vscode/
+*.user
+*.suo
+azure/vm-info.env
+appsettings.Development.local.json

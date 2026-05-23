@@ -1,0 +1,45 @@
+services:
+  oracle-db:
+    image: gvenzl/oracle-xe:21-slim-faststart
+    container_name: clyvocare-oracle
+    restart: unless-stopped
+    environment:
+      ORACLE_PASSWORD: ClyvoCare_Oracle_Pwd1
+      APP_USER: clyvocare
+      APP_USER_PASSWORD: ClyvoCare_App_Pwd1
+    ports:
+      - "1521:1521"
+    volumes:
+      - clyvocare-oracle-data:/opt/oracle/oradata
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
+    networks:
+      - clyvocare-net
+
+  api:
+    build: .
+    container_name: clyvocare-api
+    restart: unless-stopped
+    depends_on:
+      oracle-db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__OracleConnection: "User Id=clyvocare;Password=ClyvoCare_App_Pwd1;Data Source=oracle-db:1521/XEPDB1"
+    networks:
+      - clyvocare-net
+
+volumes:
+  clyvocare-oracle-data:
+    name: clyvocare-oracle-data
+
+networks:
+  clyvocare-net:
+    driver: bridge
