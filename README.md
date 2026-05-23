@@ -4,6 +4,8 @@ Plataforma de monitoramento de saude animal com API REST em **ASP.NET Core 10**,
 
 Repositorio: https://github.com/GuuiSOares/clyvocare-devops
 
+Video da entrega (demonstracao Azure CLI, Docker, CRUD e Oracle): https://youtu.be/dHmU2mMyS_o
+
 ---
 
 ## Descricao do projeto
